@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+torch
+torchaudio
+librosa
+numpy
+scipy
+python-multipart
+pydantic
+pydantic-settings

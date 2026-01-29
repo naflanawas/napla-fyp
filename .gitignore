@@ -1,0 +1,80 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# User data (contains personal prototypes)
+backend_server/user_data/
+
+# Model weights (large files, optional)
+# backend_server/weights/*.pth
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# Flutter/Dart
+mobile_app/.dart_tool/
+mobile_app/.flutter-plugins
+mobile_app/.flutter-plugins-dependencies
+mobile_app/.packages
+mobile_app/build/
+mobile_app/*.iml
+mobile_app/.metadata
+
+# iOS
+mobile_app/ios/Pods/
+mobile_app/ios/.symlinks/
+mobile_app/ios/Flutter/Flutter.framework
+mobile_app/ios/Flutter/Flutter.podspec
+
+# Android
+mobile_app/android/.gradle/
+mobile_app/android/local.properties
+mobile_app/android/*.jks
+mobile_app/android/captures/
+mobile_app/android/app/debug/
+mobile_app/android/app/release/
+
+# Audio test files
+*.wav
+*.mp3
+!test/*.wav
