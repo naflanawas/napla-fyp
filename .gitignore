@@ -25,7 +25,7 @@ wheels/
 backend_server/user_data/
 
 # Model weights (large files, optional)
-# backend_server/weights/*.pth
+backend_server/weights/*.pth
 
 # IDE
 .idea/
