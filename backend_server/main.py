@@ -260,11 +260,11 @@ async def map_sequence(
     if "sequence_phrases" in config and seq_key in config["sequence_phrases"]:
         existing = config["sequence_phrases"][seq_key]
         if existing != phrase:
-            # Downgrade to warning but don't save
-            return {
-                "success": False, 
-                "message": f"Warning: Sequence '{seq_key}' is already mapped to '{existing}'. Please delete it first if you want to reassign it."
-            }
+            # Strictly block saving if duplicate
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Sequence '{seq_key}' is already mapped to '{existing}'. Please delete it first."
+            )
             
     user_manager.set_sequence_phrase(user_id, seq_list, phrase)
     return {"success": True, "sequence": seq_list, "phrase": phrase}
