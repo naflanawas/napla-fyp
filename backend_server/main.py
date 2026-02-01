@@ -249,6 +249,23 @@ async def map_sequence(
 ):
     """Map a sequence of breath tokens to a phrase"""
     seq_list = [s.strip() for s in sequence.split(",")]
+    
+    # Check for existing mapping
+    existing_phrase = user_manager.get_phrase_for_sequence(user_id, seq_list)
+    
+    # get_phrase_for_sequence is robust (checks intents too), so we should check specifically the sequence map
+    config = user_manager.load_config(user_id)
+    seq_key = ",".join(seq_list)
+    
+    if "sequence_phrases" in config and seq_key in config["sequence_phrases"]:
+        existing = config["sequence_phrases"][seq_key]
+        if existing != phrase:
+            # Downgrade to warning but don't save
+            return {
+                "success": False, 
+                "message": f"Warning: Sequence '{seq_key}' is already mapped to '{existing}'. Please delete it first if you want to reassign it."
+            }
+            
     user_manager.set_sequence_phrase(user_id, seq_list, phrase)
     return {"success": True, "sequence": seq_list, "phrase": phrase}
 
