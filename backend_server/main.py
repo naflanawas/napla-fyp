@@ -59,14 +59,14 @@ class CalibrateResponse(BaseModel):
 
 class PredictResponse(BaseModel):
     success: bool
-    intent: str
-    confidence: float
-    distance: float
-    is_confident: bool
+    intent: Optional[str] = None
+    confidence: float = 0.0
+    distance: float = 0.0
+    is_confident: bool = False
     phrase: str
-    all_distances: dict
-    is_sequence_complete: bool = True # Default for atomic intents
-    matched_sequence: Optional[str] = None # e.g. "short,long"
+    all_distances: Optional[dict] = {}
+    is_sequence_complete: bool = True 
+    matched_sequence: Optional[str] = None
 
 class IntentInfo(BaseModel):
     name: str
@@ -317,6 +317,22 @@ async def predict(
             embedding = embedder.extract_embedding(features.unsqueeze(0)).squeeze(0)
             result = protonet.predict(user_id, embedding)
         
+        # --- Strict Validation ---
+        MAX_DISTANCE = 25.0 # Tunable threshold
+        if result.distance > MAX_DISTANCE:
+            logger.info(f"Rejection: Distance {result.distance:.2f} > {MAX_DISTANCE} (Input too different)")
+            return {
+                "success": True, # It is a successful "no match"
+                "intent": None,
+                "confidence": 0.0,
+                "distance": result.distance,
+                "is_confident": False,
+                "phrase": "...", 
+                "is_sequence_complete": False,
+                "matched_sequence": None,
+                "all_distances": {}
+            }
+            
         # 3. Handle Sequence Logic
         # Result intent will be like "short" or "water_short"
         # We extract the 'label' part which is what we buffer

@@ -91,4 +91,5 @@ class ProtoNetClassifier:
             confidence_margin = 1.0 / (1.0 + d1)
             
         pred = sorted_idx[0].item()
-        return int(pred), float(confidence_margin)
+        # Return d1 (min distance) as the 3rd element
+        return int(pred), float(confidence_margin), float(d1)
