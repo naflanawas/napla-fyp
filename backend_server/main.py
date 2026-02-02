@@ -317,22 +317,7 @@ async def predict(
             embedding = embedder.extract_embedding(features.unsqueeze(0)).squeeze(0)
             result = protonet.predict(user_id, embedding)
         
-        # --- Strict Validation ---
-        MAX_DISTANCE = 25.0 # Tunable threshold
-        if result.distance > MAX_DISTANCE:
-            logger.info(f"Rejection: Distance {result.distance:.2f} > {MAX_DISTANCE} (Input too different)")
-            return {
-                "success": True, # It is a successful "no match"
-                "intent": None,
-                "confidence": 0.0,
-                "distance": result.distance,
-                "is_confident": False,
-                "phrase": "...", 
-                "is_sequence_complete": False,
-                "matched_sequence": None,
-                "all_distances": {}
-            }
-            
+       
         # 3. Handle Sequence Logic
         # Result intent will be like "short" or "water_short"
         # We extract the 'label' part which is what we buffer
@@ -479,6 +464,70 @@ async def update_intent_phrase(
     
     user_manager.set_intent_phrase(user_id, intent, phrase)
     return {"success": True, "intent": intent, "phrase": phrase}
+
+
+# ============= Debug & Visualization =============
+
+@app.post("/debug/{user_id}")
+async def debug_audio_processing(
+    user_id: str,
+    file: UploadFile = File(...)
+):
+    """
+    Debug endpoint to visualize the audio processing pipeline.
+    Returns:
+    - MFCC features shape
+    - Embedding vector (first 10 dims)
+    - All distances to prototypes
+    - Predicted intent
+    """
+    try:
+        # 1. Read audio
+        audio_data = await file.read()
+        audio = audio_processor.load_audio_from_bytes(audio_data)
+        
+        # 2. Extract MFCC features
+        features = audio_processor.process_audio(audio)
+        
+        # 3. Get embedding
+        embedding = embedder.extract_embedding(features.unsqueeze(0)).squeeze(0)
+        
+        # 4. Predict
+        result = protonet.predict(user_id, embedding)
+        
+        # 5. Get all prototypes for comparison
+        user_intents = protonet.get_user_intents(user_id)
+        
+        return {
+            "audio_info": {
+                "sample_rate": 16000,
+                "duration_sec": len(audio) / 16000,
+                "num_samples": len(audio)
+            },
+            "mel_spectrogram": {
+                "shape": list(features.shape),
+                "num_frames": features.shape[-1],
+                "num_mels": features.shape[0]
+            },
+            "embedding": {
+                "dimension": len(embedding),
+                "first_10_values": embedding[:10].tolist(),
+                "mean": float(embedding.mean()),
+                "std": float(embedding.std())
+            },
+            "prediction": {
+                "intent": result.intent,
+                "confidence": result.confidence,
+                "distance": result.distance,
+                "is_confident": result.is_confident
+            },
+            "all_distances": result.all_distances,
+            "calibrated_intents": user_intents
+        }
+        
+    except Exception as e:
+        logger.error(f"Debug error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============= Run Server =============
