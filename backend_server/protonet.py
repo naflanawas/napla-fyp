@@ -89,12 +89,15 @@ class ProtoNet:
     def add_sample(self, 
                    user_id: str, 
                    intent: str, 
-                   embedding: torch.Tensor) -> None:
+                   embedding: torch.Tensor) -> Tuple[bool, float]:
         """
-        Add a calibration sample for a user's intent
+        Add a calibration sample for a user's intent with outlier rejection
         
-        Automatically updates the prototype.
+        Returns:
+            (accepted, distance) - True if added, False if rejected (too far from prototype)
         """
+        MAX_DISTANCE = 25.0 # Validation threshold
+
         # Initialize user storage if needed
         if user_id not in self.samples:
             self.samples[user_id] = {}
@@ -102,14 +105,27 @@ class ProtoNet:
         
         if intent not in self.samples[user_id]:
             self.samples[user_id][intent] = []
+            
+        # Check against existing prototype if it exists
+        distance = 0.0
+        embedding_cpu = embedding.detach().cpu()
+        
+        if intent in self.prototypes[user_id] and len(self.samples[user_id][intent]) > 0:
+            existing_proto = self.prototypes[user_id][intent]
+            distance = self.compute_distance(embedding_cpu, existing_proto)
+            
+            if distance > MAX_DISTANCE:
+                return False, distance
         
         # Add sample
-        self.samples[user_id][intent].append(embedding.detach().cpu())
+        self.samples[user_id][intent].append(embedding_cpu)
         
         # Update prototype
         self.prototypes[user_id][intent] = self.create_prototype(
             self.samples[user_id][intent]
         )
+        
+        return True, distance
     
     def add_samples_batch(self,
                           user_id: str,

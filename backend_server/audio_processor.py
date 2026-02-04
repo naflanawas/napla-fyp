@@ -134,27 +134,11 @@ class AudioProcessor:
         return windows
     
     def process_audio(self, audio: np.ndarray) -> torch.Tensor:
-        """
-        Full preprocessing pipeline: audio -> model input
-        
-        Args:
-            audio: Raw audio waveform
-        
-        Returns:
-            Tensor ready for MSTCN model
-        """
-        # Normalize
         audio = self.normalize_audio(audio)
-        
-        # Compute mel spectrogram
         mel_spec = self.compute_mel_spectrogram(audio)
-        
-        # Add delta features (3 channels)
         features = self.compute_delta_features(mel_spec)
         
-        # Convert to tensor
         tensor = torch.from_numpy(features).float()
-        
         return tensor
     
     def process_audio_file(self, audio_path: Union[str, Path]) -> torch.Tensor:

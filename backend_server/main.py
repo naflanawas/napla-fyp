@@ -10,6 +10,9 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict
 import logging
 import traceback
+import os
+
+os.environ['NUMBA_CACHE_DIR'] = '/tmp/numba_cache'
 
 from config import HOST, PORT, CORS_ORIGINS
 from model import MSTCNEmbedder
@@ -17,7 +20,6 @@ from audio_processor import AudioProcessor, BreathDetector
 from protonet import ProtoNet
 from user_manager import UserManager
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -45,18 +47,15 @@ protonet = ProtoNet()
 user_manager = UserManager()
 
 
-# ============= Response Models =============
-
+# Response Models 
 class HealthResponse(BaseModel):
     status: str
     message: str
-
 class CalibrateResponse(BaseModel):
     success: bool
     message: str
     intent: str
     sample_count: int
-
 class PredictResponse(BaseModel):
     success: bool
     intent: Optional[str] = None
@@ -67,7 +66,6 @@ class PredictResponse(BaseModel):
     all_distances: Optional[dict] = {}
     is_sequence_complete: bool = True 
     matched_sequence: Optional[str] = None
-
 class IntentInfo(BaseModel):
     name: str
     sample_count: int
@@ -178,8 +176,16 @@ async def calibrate(
         # Combine intent and label for prototype storage
         prototype_key = f"{intent}_{label}" if label else intent
         
-        # Add to prototypes
-        protonet.add_sample(user_id, prototype_key, embedding)
+        # Add to prototypes with validation
+        is_accepted, distance = protonet.add_sample(user_id, prototype_key, embedding)
+        
+        if not is_accepted:
+            logger.warning(f"Rejected calibration sample for {user_id}/{prototype_key}: Distance {distance:.2f} > Threshold")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Inconsistent breath detected (Difference: {distance:.1f}). Please try to match your previous breaths."
+            )
+            
         sample_count = protonet.get_sample_count(user_id, prototype_key)
         
         # Save phrase if provided, associate with the base intent
@@ -501,28 +507,28 @@ async def debug_audio_processing(
         return {
             "audio_info": {
                 "sample_rate": 16000,
-                "duration_sec": len(audio) / 16000,
-                "num_samples": len(audio)
+                "duration_sec": float(len(audio) / 16000),
+                "num_samples": int(len(audio))
             },
             "mel_spectrogram": {
-                "shape": list(features.shape),
-                "num_frames": features.shape[-1],
-                "num_mels": features.shape[0]
+                "shape": [int(x) for x in features.shape],
+                "num_frames": int(features.shape[-1]),
+                "num_mels": int(features.shape[0])
             },
             "embedding": {
-                "dimension": len(embedding),
-                "first_10_values": embedding[:10].tolist(),
+                "dimension": int(len(embedding)),
+                "first_10_values": [float(x) for x in embedding[:10].tolist()],
                 "mean": float(embedding.mean()),
                 "std": float(embedding.std())
             },
             "prediction": {
-                "intent": result.intent,
-                "confidence": result.confidence,
-                "distance": result.distance,
-                "is_confident": result.is_confident
+                "intent": str(result.intent) if result.intent else None,
+                "confidence": float(result.confidence),
+                "distance": float(result.distance),
+                "is_confident": bool(result.is_confident)
             },
-            "all_distances": result.all_distances,
-            "calibrated_intents": user_intents
+            "all_distances": {str(k): float(v) for k, v in result.all_distances.items()},
+            "calibrated_intents": [str(intent) for intent in user_intents]
         }
         
     except Exception as e:
