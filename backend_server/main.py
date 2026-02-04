@@ -279,7 +279,7 @@ async def map_sequence(
 async def clear_buffer(user_id: str):
     """Clear the user's breath token buffer"""
     user_manager.clear_user_buffer(user_id)
-    return {"success": true, "message": "Buffer cleared"}
+    return {"success": True, "message": "Buffer cleared"}
 
 @app.delete("/user/{user_id}/sequence")
 async def delete_sequence(user_id: str, sequence: str = Form(...)):
